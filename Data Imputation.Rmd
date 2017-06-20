@@ -1,0 +1,109 @@
+---
+title: "Data imputation"
+author: "Y YANG"
+date: "01/06/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+
+```{r}
+#library
+library(haven)
+library(readxl)
+library(foreign)
+library(Amelia)
+library(gbm)
+library(randomForest)
+library(gam)
+```
+
+```{r}
+#read china favouriblity data 
+#dont run
+
+china_favor42 <- read_excel("/Users/moony/Desktop/Dissertation/data/favoribility_polity.xlsx" , 
+                            col_names = TRUE)
+china_favor42 <- china_favor42[,c(1:5,9,11:12)]
+
+#save as csv
+#dont run
+write.csv(china_favor42, "/Users/moony/Desktop/Dissertation/data/favoribility_polity.csv")
+
+#read favor and polity data
+
+china_favor42 <- read.csv("https://raw.githubusercontent.com/YangYue93/Dissertation_Public_Opinion/master/favoribility_polity.csv", header = TRUE)
+china_favor42 <- china_favor42[,-1]
+colnames(china_favor42) <- c("Country.Name", "Time", "Pub.Opinion", "Region", "Polity",
+                             "Polity.Sim", "Share", "Member")
+
+```
+  
+  
+```{r}
+#read wdi data
+wdi <- read.csv("https://raw.githubusercontent.com/YangYue93/Dissertation_Public_Opinion/master/wdi_data.csv", header = TRUE)
+wdi <- wdi[,-5]
+colnames(wdi) <- c("Country.Name", "Time", "GDP", "GDP.Growth", "Capital", "Air", "Port", "Debt")
+
+#combine
+total42 <- merge(x = china_favor42, y = wdi,
+                 by = c("Country.Name", "Time"))
+finaldata <- merge(x = WDI_AIIB, y = sim_chn_usa, 
+                   by = intersect(names(WDI_AIIB),names(sim_chn_usa))
+                   )
+
+#output
+write.csv(total42, "/Users/moony/Desktop/Dissertation/data/total42_noimpute.csv")
+
+china_favor <- read.csv("/Users/moony/Desktop/data/try.csv" , header = TRUE)
+china_favor <- china_favor[,-1]
+```
+
+```{r}
+#Imputation
+
+#read csv
+for.imp <- read.csv("https://raw.githubusercontent.com/YangYue93/Dissertation_Public_Opinion/master/total42_noimpute.csv", header = TRUE)
+for.imp <- for.imp[,-c(1,5:7)]
+
+#calculate na percentage
+colMeans(is.na(for.imp))
+
+```
+
+```{r}
+#imputation
+a.out <- amelia(for.imp, m = 5, cs = "Country.Name", ts = "Time")
+
+write.amelia(obj = a.out, file.stem = "/Users/moony/Desktop/Dissertation/complete")
+data.amelia1<-read.csv("/Users/moony/Desktop/Dissertation/complete1.csv")
+data.amelia2<-read.csv("/Users/moony/Desktop/Dissertation/complete2.csv")
+data.amelia3<-read.csv("/Users/moony/Desktop/Dissertation/complete3.csv")
+data.amelia4<-read.csv("/Users/moony/Desktop/Dissertation/complete4.csv")
+data.amelia5<-read.csv("/Users/moony/Desktop/Dissertation/complete5.csv")
+
+complete <- data.amelia1 + data.amelia2 + data.amelia3 + data.amelia4 + data.amelia5
+complete <- complete[,-c(1:3)]
+complete <- complete / 5
+
+data42 <- cbind(china_favor42[,c(1:2,4:6)],complete)
+
+#save csv
+write.csv(data42, "/Users/moony/Desktop/Dissertation/Data/Data42.csv")
+
+#select membership countries
+data20 <- data42 %>% 
+  filter(Country.Name == "Australia" | Country.Name == "Canada" | Country.Name == "China" |
+         Country.Name == "Egypt, Arab Rep." | Country.Name == "France" | Country.Name == "Germany" |                   Country.Name == "India" | Country.Name == "Indonesia" | Country.Name == "Israel" | 
+        Country.Name == "Italy" | Country.Name == "Jordan" | Country.Name == "Malaysia" | 
+        Country.Name == "Pakistan" | Country.Name == "Philippines" | Country.Name == "Poland" | 
+        Country.Name == "Russian Federation" | Country.Name == "South Africa" | Country.Name == "Spain" | 
+        Country.Name == "United Kingdom" | Country.Name == "Vietnam")
+#save csv
+write.csv(data20, "/Users/moony/Desktop/Dissertation/Data/Data20.csv")
+```
