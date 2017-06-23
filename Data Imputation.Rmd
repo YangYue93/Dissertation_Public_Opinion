@@ -98,7 +98,7 @@ write.csv(data42, "/Users/moony/Desktop/Dissertation/Data/Data42.csv")
 
 #select membership countries
 data20 <- data42 %>% 
-  filter(Country.Name == "Australia" | Country.Name == "Canada" | Country.Name == "China" |
+  filter(Country.Name == "Australia" | Country.Name == "Brazil" | Country.Name == "Canada" |
          Country.Name == "Egypt, Arab Rep." | Country.Name == "France" | Country.Name == "Germany" |                   Country.Name == "India" | Country.Name == "Indonesia" | Country.Name == "Israel" | 
         Country.Name == "Italy" | Country.Name == "Jordan" | Country.Name == "Malaysia" | 
         Country.Name == "Pakistan" | Country.Name == "Philippines" | Country.Name == "Poland" | 
