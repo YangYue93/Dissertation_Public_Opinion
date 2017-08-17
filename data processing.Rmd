@@ -4,7 +4,7 @@ author: "Y YANG"
 date: "20/06/2017"
 output: pdf_document
 ---
-
+**Use _texreg_ (or _stargazer_, _apsrtable_ or equivalent) to present results in tabular form. You can also use _coefplot_ style plots (or any other visualisation of results).**
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
@@ -21,19 +21,55 @@ data20 <- read.csv("https://raw.githubusercontent.com/YangYue93/Dissertation_Pub
 data20 <- data20[,-1]
 ```
 
-
 ```{r}
+#DATA DESCRIPTION 
+#add countries names
 #select only year 2015
 
 data2015 <- data42 %>%
   filter(Time == "2015")
 
+data2008 <- data42 %>%
+  filter(Time == "2008")
+
+gg <- cbind(data2015[,c(1,6)],data2008[,6])
+colnames(gg) <- c("Country","Public Opinion 2008","Public Opinion 2015")
+
+sPDF <- joinCountryData2Map(data2015,joinCode="NAME",nameJoinColumn="Country.Name")
+mapDevice() #create world map shaped window
+mapCountryData(sPDF,nameColumnToPlot='Pub.Opinion')
+
+
+sPDF <- joinCountryData2Map(data2015,joinCode="NAME",nameJoinColumn="Country.Name")
+mapDevice() #create world map shaped window
+mapCountryData(sPDF,nameColumnToPlot='Member')
+
+#ggplot line
+ggplot(data=data42, aes(x=data42$Time, y=data42$Pub.Opinion, group=data42$Country.Name, colour=data42$Country.Name)) +
+    geom_line() +
+    geom_point()
+
+#加一个趋势图
+attach(gg)
+
+ggplot(gg, aes(x=`Public Opinion 2008`, y= `Public Opinion 2015`, colour=Country, label=Country))+
+  geom_point() +geom_text(aes(label=Country),hjust=0, vjust=0)
+
+ggplot(mtcars, aes(x='wt', y='mpg', label='name')) +
+    geom_text()
+```
+
+
+
+```{r}
+
+
 #add change of opinion
-data2015$Change.Opi <- c(19,5,-20.74496682,-15.10462369,9.098261671,1,2.710363487,-4.429691335,
-                         -11.66555309,22,8,15.41791366,8.75965155,-25.98278863,5,3.541577165,
-                         -22.23449778,-5,-11,25.03076856,13,2,13.84140769,9,21.26788153,6,
-                         1.184328048,-12.28506936,7,19,11.93513562,15,10,-9.856037591,
-                         -0.24242822,-6,-3.345630228,3.070030399,-2,-1,-10.00939361,-11.8344058)
+data2008 <- data42 %>%
+  filter(Time == "2008")
+
+data2015$Change.Opi <- data2015$Pub.Opinion - data2008$Pub.Opinion
+
 
 attach(data2015)
 #remove china
@@ -46,9 +82,92 @@ data2015$log.gdp <- log(data2015$GDP)
 ```
 
 ```{r}
+#add vote variable
+#UNGA VOTING DATA
+
+vote <- read.csv("/Users/moony/Downloads/ChinaUNGAVoting.csv")
+vote$ccode1 <- countrycode(vote$ccode1, "cown" , "country.name")
+names(vote)[names(vote)=="ccode1"] <- "Country.Name"
+vote$ccode2 <- countrycode(vote$ccode2, "cown" , "country.name")
+names(vote)[names(vote)=="ccode2"] <- "China"
+
+vote <- vote %>%
+  filter(year == "2014")
+vote <- vote[,-1]
+
+vote <- vote[,c(1,5:7)]
+vote$Country.Name <- countrycode(vote$Country.Name, "country.name", "cown")
+
+data2015$name <- countrycode(data2015$Country.Name, "country.name", "cown")
+
+data2015 <- merge(x = data2015, y = vote, 
+             by.x = "name" , by.y = "Country.Name")
+
+vote2 <- read.csv("/Users/moony/Desktop/Dissertation/data/vote.csv", header = TRUE)
+
+
+```
+
+
+
+```{r}
+#stage first
 #covariation model
 cov(data2015$Member,data2015$Change.Opi)
 # [1] -1.294512
+
+#OLS
+attach(data2015)
+log1 <- glm(Member ~ Region + Polity.Sim + Change.Opi + GDP.Growth + absidealdiff, 
+           data = data2015,
+           family = binomial(link='logit'))
+log2 <- glm(Member ~ Change.Opi, 
+           family = binomial(link='logit'),
+           data = data2015)
+log3 <- glm(Member ~ GDP.Growth, 
+           family = binomial(link='logit'),
+           data = data2015)
+log4 <- glm(vote2$membership~vote2$absidealdiff, 
+           family = binomial(link='logit'),
+           data = vote2)
+
+anova(log1,log2,log3,log4,
+      test="Chisq")
+
+screenreg(log1,log2,log3,log4)
+
+library(stargazer)
+stargazer::stargazer(log1,log2,log3,log4, title="Results", type = "html", align=TRUE)
+stargazer(data2015)
+
+new <- read.csv("/Users/moony/Desktop/Dissertation/data/allnewdata.csv", header = T)
+new <- new[,-1]
+
+new$import.dependence <- as.numeric(new$import.dependence)
+
+attach(new)
+log1 <- glm(membership ~ absidealdiff + polity.diff + Import.from.china + GDP + Opinion.Change,
+            family = binomial(link='logit'),
+            data = new)
+log2 <- glm(membership ~ Opinion.Change,
+            family = binomial(link='logit'),
+            data = new)
+log3 <- glm(membership ~ absidealdiff,
+            family = binomial(link='logit'),
+            data = new)
+log4 <- glm(membership ~ polity.diff,
+            family = binomial(link='logit'),
+            data = new)
+
+
+log5 <- glm(membership ~ Import.from.china,
+            family = binomial(link='logit'),
+            data = new)
+
+anova(log1,log2,log3,log4,log5,
+      test="Chisq")
+library(apsrtable)
+apsrtable(log1,log2,log3,log4,log5)
 ```
 
 ```{r}

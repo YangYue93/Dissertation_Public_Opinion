@@ -107,3 +107,131 @@ data20 <- data42 %>%
 #save csv
 write.csv(data20, "/Users/moony/Desktop/Dissertation/Data/Data20.csv")
 ```
+
+
+```{r}
+#add vote variable
+vote <- read.csv("/Users/moony/Desktop/Dissertation/data/vote.csv", header = TRUE)
+vote$code <- countrycode(vote$Country.Name, "country.name", "cown")
+
+vote <- vote[,c(7,2,3,6)]
+
+#add polity variable
+polity <- read_xls("/Users/moony/Desktop/Dissertation/data/polity.xls")
+
+polity <- polity %>%
+  filter(year == "2015")
+
+polity <- polity [, c(2,4,11)]
+
+polity$china <- rep(-7, 167)
+polity$polity.diff <- polity$polity2 - polity$china
+
+merge1 <- merge(vote, polity,
+             by.x = "code", by.y = "ccode")
+merge1 <- merge1[,-c(5:7)]
+
+```
+
+
+```{r}
+#add importation
+import <- read_xlsx("/Users/moony/Desktop/Dissertation/data/import.xlsx")
+
+import$code <- countrycode(import$Country.Name , "country.name" , "cown")
+
+merge2 <- merge(merge1, import,
+             by.x = "code", by.y = "code")
+
+merge2 <- merge2[,-6]
+```
+
+```{r}
+#add gdp
+gdp <- read.csv("/Users/moony/Desktop/Dissertation/data/gdp.csv", header = F)
+
+gdp <- gdp[-c(1:2),]
+
+colnames(gdp) <- gdp[1,]
+gdp <- gdp[-1,]
+gdp <- gdp[,c(1,2,60)]
+
+gdp <- na.omit(gdp)
+
+colnames(gdp) <- c("Country.Name","iso3c","GDP")
+
+gdp$code <- countrycode(gdp$iso3c,"wb","cown")
+
+merge3 <- merge(merge2, gdp,
+                by.x = "code", by.y = "code")
+merge3 <- na.omit(merge3)
+
+merge3$Import.Dependence <- (merge3$Import.from.china * 1000000) / merge3$GDP
+
+merge3 <- merge3[,-c(7,8)]
+
+write.csv(merge3, "/Users/moony/Desktop/Dissertation/data/all150.csv")
+
+```
+
+```{r}
+#add opinion change manually
+
+merge4 <- read.csv("/Users/moony/Desktop/Dissertation/data/all150.csv", header = T)
+```
+
+
+
+```{r}
+#IMF and AIIB share DATA
+
+imf <- read_xlsx("/Users/moony/Desktop/Dissertation/data/imfshare.xlsx")
+
+imf$code <- countrycode(imf$Country.Name, "country.name" , "cown")
+
+imf <- na.omit(imf)
+imf$Subscription.Difference <- imf$IMF.Share - imf$AIIB.Share
+
+
+merge5 <- merge(imf, merge4,
+                by.x = "code", by.y = "code")
+
+merge5 <- merge5[,-c(6,7)]
+
+write.csv(merge5, "/Users/moony/Desktop/Dissertation/data/allnewdata.csv")
+```
+
+
+```{r}
+newdata <- read.csv("/Users/moony/Desktop/Dissertation/data/allnewdata.csv", header = T)
+newdata <- newdata[,-1]
+
+newdata$Import.from.china <- newdata$Import.from.china * 1000000
+newdata$Import.Dependence <- newdata$Import.from.china / newdata$GDP
+
+
+newdata20 <- newdata %>%
+  filter(membership == 1)
+
+write.csv(newdata20, "/Users/moony/Desktop/Dissertation/data/20newdata.csv")
+
+```
+
+
+
+```{r}
+vote2 <- read.csv("/Users/moony/Desktop/Dissertation/data/vote.csv", header = TRUE)
+
+vote2$code <- countrycode(vote2$Country.Name, "country.name","cown")
+vote2 <- vote2[,c(4,5,7)]
+
+
+newdata$code <- countrycode(newdata$Country.Name, "country.name", "cown")
+
+try <- merge(newdata, vote2,
+             by.x = "code", by.y = "code")
+
+write.csv(try, "/Users/moony/Desktop/Dissertation/data/finalstagetwodata.csv")
+
+```
+

@@ -1,0 +1,149 @@
+---
+title: "Final results"
+author: "Y YANG"
+date: "16/08/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+
+#print table
+library(stargazer)
+#df manipulation
+library(tidyverse)
+library(dplyr)
+library(MASS)
+library(base)
+#gam
+library(gam)
+#ggplot
+library(rworldmap)
+library(RColorBrewer)
+library(countrycode)
+
+```
+
+#data visualisation
+
+```{r}
+#DATA DESCRIPTION 
+#add countries names
+#select only year 2015
+
+data2015 <- data42 %>%
+  filter(Time == "2015")
+
+data2008 <- data42 %>%
+  filter(Time == "2008")
+
+gg <- cbind(data2015[,c(1,6)],data2008[,6])
+colnames(gg) <- c("Country","Public Opinion 2008","Public Opinion 2015")
+
+#world map
+sPDF <- joinCountryData2Map(data2015,joinCode="NAME",nameJoinColumn="Country.Name")
+mapDevice() #create world map shaped window
+mapCountryData(sPDF,nameColumnToPlot='Pub.Opinion')
+
+sPDF <- joinCountryData2Map(data2015,joinCode="NAME",nameJoinColumn="Country.Name")
+mapDevice() #create world map shaped window
+mapCountryData(sPDF,nameColumnToPlot='Member')
+
+#ggplot trend
+attach(gg)
+
+ggplot(gg, aes(x=`Public Opinion 2008`, y= `Public Opinion 2015`, colour=Country, label=Country))+
+  geom_point() +geom_text(aes(label=Country),hjust=0, vjust=0)
+
+```
+
+#stage one
+#logit regression
+
+```{r, include=FALSE}
+set.seed(1)
+
+newdata <- read.csv("/Users/moony/Desktop/Dissertation/data/allnewdata.csv", header = T)
+newdata <- newdata[,-c(1:2)]
+
+newdata$Import.from.china <- newdata$Import.from.china * 1000000
+newdata$Import.Dependence <- newdata$Import.from.china / newdata$GDP
+
+attach(newdata)
+log1 <- glm(membership ~ s3un + polity.diff + Import.from.china +  Opinion.Change,
+            family = binomial(link='logit'),
+            data = try)
+log2 <- glm(membership ~ s3un,
+            family = binomial(link='logit'),
+            data = try)
+log3 <- glm(membership ~ polity.diff,
+            family = binomial(link='logit'),
+            data = try)
+log4 <- glm(membership ~ Import.from.china,
+            family = binomial(link='logit'),
+            data = try)
+log5 <- glm(membership ~ Opinion.Change,
+            family = binomial(link='logit'),
+            data = try)
+
+```
+
+#print stage one result
+
+```{r}
+stargazer(log1,log2,log3,log4,log5,
+          dep.var.labels = c("Logistic Regression"),
+          covariate.labels = c("Foreign Policy Preference Similarity","Regime Type Difference",
+                               "Importation Dependence on China","Public Opinion Change/China"),
+          type = "text", out = "stage one result.txt")
+```
+
+#stage two 
+#ols regression
+
+```{r}
+newdata$Subscription.Difference <- newdata$Subscription.Difference
+newdata$Relevant.Subscription <- newdata$AIIB.Share  /  (newdata$GDP/1000000)
+
+memberstate <- newdata %>%
+  filter(membership == 1)
+
+newdata$GDP <- newdata$GDP / 1000000
+
+stagetwo <- read.csv("/Users/moony/Desktop/Dissertation/data/vote.csv", header = T)
+
+attach(stagetwo)
+
+#ols
+ols1 <- lm(Subscription.Difference ~ s3un + polity.diff + Import.from.china + Opinion.Change:GDP, 
+           data = stagetwo)
+summary(ols1)
+
+ols2 <- lm(Subscription.Difference ~ s3un, 
+           data = stagetwo)
+summary(ols2)
+
+ols3 <- lm(Subscription.Difference ~ polity.diff, 
+           data = stagetwo)
+summary(ols3)
+
+ols4 <- lm(Subscription.Difference ~ Import.from.china, 
+           data = stagetwo)
+summary(ols4)
+
+ols5 <- lm(Subscription.Difference ~ Opinion.Change:GDP, 
+           data = stagetwo)
+summary(ols5)
+```
+
+#print stage two results
+
+```{r}
+stargazer(ols1,ols2,ols3,ols4,ols5,
+          dep.var.labels = c("Ordinary Least Squares (OLS) Regression Model"),
+          covariate.labels = c("Foreign Policy Preference Similarity","Regime Type Difference",
+                               "Importation Dependence on China","Public Opinion Change/China"),
+          type = "text", out = "stage two result.text")
+```
+
